@@ -1,27 +1,31 @@
-import { PrimaryColumn, ManyToOne, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, Entity, JoinColumn } from 'typeorm';
+import { PrimaryColumn, ManyToOne, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, Entity, JoinColumn, Index, type Relation } from 'typeorm';
 import { User } from './user.entity.js'
 
 type JsonObject = Record<string, unknown>;
 
 @Entity()
+@Index(['userId', 'deletedAt'])
 export class Board {
     @PrimaryColumn('uuid')
     id: string;
 
-    @ManyToOne(()=>User, (user)=>user.boards, {onDelete: 'CASCADE'}) //typeorm decorator to create manytoone relation from this entity to User, with user.boards as the property that will be the foreign key column
-    @JoinColumn({name: 'userId'}) //typeorm decorator that sets the name of the column in the boards table. Without it, TypeORM builds the name from the property name plus Id, which gives userIdId
-    userId: User;
+    @Column()
+    userId: number;
+
+    @ManyToOne(()=>User, (user)=>user.boards, {onDelete: 'CASCADE'}) 
+    @JoinColumn({name: 'userId'}) 
+    user: Relation<User>; 
 
     @Column({type:"varchar", length:100})
     name: string;
 
-    @Column('jsonb', {nullable:true})
+    @Column({type:'jsonb', default: ()=>"'[]'"})
     tasks: JsonObject[];
 
-    @Column('jsonb', {nullable:true})
+    @Column({type:'jsonb', default: ()=>"'[]'"})
     columns: JsonObject[];
 
-    @Column()
+    @Column({type: 'int'})
     position: number;
 
     @CreateDateColumn({type: 'timestamptz'})
