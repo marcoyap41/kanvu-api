@@ -6,7 +6,7 @@ type JsonObject = Record<string, unknown>;
 @Entity()
 export class Board {
     @PrimaryColumn('uuid')
-    uuid: string;
+    id: string;
 
     @ManyToOne(()=>User, (user)=>user.boards, {onDelete: 'CASCADE'}) //typeorm decorator to create manytoone relation from this entity to User, with user.boards as the property that will be the foreign key column
     @JoinColumn({name: 'userId'}) //typeorm decorator that sets the name of the column in the boards table. Without it, TypeORM builds the name from the property name plus Id, which gives userIdId
