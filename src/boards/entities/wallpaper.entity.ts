@@ -1,10 +1,10 @@
 import { Entity, JoinColumn, OneToOne, PrimaryColumn, Column, UpdateDateColumn, type Relation } from "typeorm";
 import { User } from "./user.entity.js";
 
-@Entity()
+@Entity('wallpapers')
 export class Wallpaper{
     @PrimaryColumn()
-    userId: User;
+    userId: number;
 
     @OneToOne(()=>User, (user)=>user.wallpaper)
     @JoinColumn({name: 'userId'})
