@@ -1,5 +1,5 @@
 import { Entity, JoinColumn, OneToOne, PrimaryColumn, Column, UpdateDateColumn, type Relation } from "typeorm";
-import { User } from "./user.entity.js";
+import { User } from "../../users/entities/user.entity.js";
 
 @Entity('wallpapers')
 export class Wallpaper{

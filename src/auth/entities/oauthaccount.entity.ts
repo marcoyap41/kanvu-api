@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, PrimaryGeneratedColumn, ManyToOne, type Relation, Unique, Index } from "typeorm";
-import { User } from "./user.entity.js";
+import { User } from "../../users/entities/user.entity.js";
 
 @Entity('oauth_accounts')
 @Unique(['provider', 'providerUserId'])

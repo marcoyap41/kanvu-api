@@ -1,5 +1,5 @@
 import { PrimaryColumn, ManyToOne, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, Entity, JoinColumn, Index, type Relation } from 'typeorm';
-import { User } from './user.entity.js'
+import { User } from '../../users/entities/user.entity.js'
 
 type JsonObject = Record<string, unknown>;
 

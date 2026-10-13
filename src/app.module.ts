@@ -5,6 +5,9 @@ import { AppService } from './app.service.js';
 import { BoardsModule } from './boards/boards.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config'
+import { AuthModule } from './auth/auth.module.js';
+import { UsersModule } from './users/users.module.js';
+import { SettingsModule } from './settings/settings.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -26,6 +29,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
         synchronize: true,
       })
     }),
+    AuthModule,
+    UsersModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

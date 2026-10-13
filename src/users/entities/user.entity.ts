@@ -1,8 +1,8 @@
 import { Column, CreateDateColumn, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn, type Relation } from "typeorm";
-import { Board } from "./board.entity.js";
-import { Wallpaper } from "./wallpaper.entity.js";
-import { OAuthAccount } from "./oauthaccount.entity.js";
-import { RefreshToken } from "./refreshtoken.entity.js";
+import { Board } from "../../boards/entities/board.entity.js";
+import { Wallpaper } from "../../settings/entities/wallpaper.entity.js";
+import { OAuthAccount } from "../../auth/entities/oauthaccount.entity.js";
+import { RefreshToken } from "../../auth/entities/refreshtoken.entity.js";
 
 @Entity('users')
 export class User {
