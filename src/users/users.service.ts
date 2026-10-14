@@ -1,20 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity.js';
 import { Repository } from 'typeorm';
-import { hash } from 'bcrypt';
+
+type newUser = { name?: string | null; email: string; hashedPassword: string | null };
 
 @Injectable()
 export class UsersService {
   constructor(@InjectRepository(User) private userRepository: Repository<User>){}
-  
+
   //dev db test. prod should only add from /auth/register 
-  async addUserDev(createUserDto: CreateUserDto){
-    const hashedPassword = await hash(createUserDto.password, 10)
+  async addUserDev(data: newUser){
     const newUser = this.userRepository.create({
-      ...createUserDto,
-      password: hashedPassword
+      name: data.name ?? null,
+      email: data.email,
+      password: data.hashedPassword
     })
 
     return this.userRepository.save(newUser);
@@ -35,4 +35,11 @@ export class UsersService {
       }
     })
   }; 
+
+  async findByEmailWithPassword(email: string){
+    return await this.userRepository.findOne({
+      where: { email: email},
+      select: { id: true, name: true, email: true, password: true}
+    })
+  }
 }

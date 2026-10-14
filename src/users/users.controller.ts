@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
 import { User } from './entities/user.entity.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+
+type newUser = { name?: string | null; email: string; hashedPassword: string | null };
 
 @Controller('users')
 export class UsersController {
@@ -10,8 +12,8 @@ export class UsersController {
 
   //dev db test
   @Post()
-  async addUserDev(@Body() createUserDto: CreateUserDto){
-    const newUser = await this.usersService.addUserDev(createUserDto)
+  async addUserDev(@Body() data: newUser){
+    const newUser = await this.usersService.addUserDev(data)
     return {
       message: `Dev \n New user added to db`,
       newUser
@@ -19,6 +21,7 @@ export class UsersController {
   }
 
   //dev get db test
+  @UseGuards(JwtAuthGuard)
   @Get()
   async getUserDev(){
     return this.usersService.findAll()
