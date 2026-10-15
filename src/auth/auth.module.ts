@@ -6,9 +6,13 @@ import { PassportModule } from '@nestjs/passport'
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy.js';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { RefreshToken } from './entities/refreshtoken.entity.js';
+import { OAuthAccount } from './entities/oauthaccount.entity.js';
 
 @Module({
-  imports: [UsersModule, 
+  imports: [TypeOrmModule.forFeature([RefreshToken, OAuthAccount]),
+    UsersModule, 
     PassportModule, 
     JwtModule.registerAsync({
       inject: [ConfigService],
