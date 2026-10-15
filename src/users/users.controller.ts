@@ -27,12 +27,13 @@ export class UsersController {
     return this.usersService.findAll()
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   async findMe(@CurrentUser() user: User){
     return {
       id: user.id,
+      name: user.name,
       email: user.email,
-      password: user.password
     }
   }
 }
