@@ -1,51 +1,60 @@
-import { Controller, Get, Post, Put, Param, Body, Delete, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Delete, ParseUUIDPipe, UseGuards, HttpCode } from '@nestjs/common';
 import { BoardsService } from './boards.service.js';
 import { UpsertBoardDto } from './dto/upsert-board.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { User } from '../users/entities/user.entity.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { OrderDto } from './dto/board-order.dto.js';
 
-@Controller('boards')
+@Controller()
 @UseGuards(JwtAuthGuard)
 export class BoardsController {
   constructor(private readonly boardsService: BoardsService) {}
 
-  @Get()
+  @HttpCode(200)
+  @Get('boards')
   async loadAll(@CurrentUser() user: User){
-    return this.boardsService.loadAll(user.id)
+    return await this.boardsService.loadAll(user.id)
   }
 
-  @Put(':id')
-  async upsertBoard(@Param('id', ParseUUIDPipe) id: string, @Body() upsertBoardDto: UpsertBoardDto, @CurrentUser() user: User){
-    return this.boardsService.upsertBoard(user.id, id, upsertBoardDto)
+  @HttpCode(200)
+  @Put('boards/:id')
+  async upsertBoard(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string, @Body() upsertBoardDto: UpsertBoardDto){
+    return await this.boardsService.upsertBoard(user.id, id, upsertBoardDto)
   }
 
+  @HttpCode(204)
   @Put('board-order')
-  async updateOrder(){
-    return 
+  async updateOrder(@CurrentUser() user: User, @Body() orderDto: OrderDto){
+    return await this.boardsService.setOrder(user.id, orderDto)
   }
 
-  @Post(':id/trash')
-  async trashBoard(@Param('id') id: string){
-    return
+  @HttpCode(200)
+  @Post('boards/:id/trash')
+  async trashBoard(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string, @Body() upsertBoardDto: UpsertBoardDto){
+    return await this.boardsService.trashBoard(user.id, id, upsertBoardDto)
   }
 
-  @Post(':id/restore')
-  async restoreBoard(@Param('id') id: string){
-    return
+  @HttpCode(200)
+  @Post('boards/:id/restore')
+  async restoreBoard(@CurrentUser() user: User, @Param('id') id: string){
+    return await this.boardsService.restoreBoard(user.id, id)
   }
 
-  @Delete(':id')
+  @HttpCode(204)
+  @Delete('boards/:id')
   async purgeBoard(@Param('id') id:string){
     return
   }
 
+  @HttpCode(204)
   @Delete('trash')
   async clearTrash(){
     return
   }
 
-  @Post('import')
+  @HttpCode(201)
+  @Post('boards/import')
   async importBoard(){
     return
   }
