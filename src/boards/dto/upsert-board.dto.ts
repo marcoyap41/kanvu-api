@@ -2,7 +2,7 @@ import { IsString, IsNotEmpty, IsObject, MaxLength, IsArray} from 'class-validat
 
 type JsonObject = Record<string, unknown>;
 
-export class CreateBoardDto {
+export class UpsertBoardDto {
     @IsString()
     @IsNotEmpty()
     @MaxLength(100)
@@ -13,6 +13,6 @@ export class CreateBoardDto {
     tasks: JsonObject[];
     
     @IsArray()
-    @IsObject()
+    @IsObject({each:true})
     columns: JsonObject[]; 
 }
