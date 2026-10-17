@@ -4,6 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { Board } from './entities/board.entity.js';
 import { OrderDto } from './dto/board-order.dto.js';
+import { ImportedBoardDto } from './dto/import-board.dto.js';
+import { randomUUID } from 'crypto';
 
 const toBoard = (b: Board) => ({
   id: b.id, name: b.name, tasks: b.tasks, columns: b.columns, createdAt: b.createdAt, lastModified: b.lastModified
@@ -74,8 +76,41 @@ export class BoardsService {
     if(!existing || !existing.deletedAt) throw new NotFoundException('Board is not in trash!')
     const position = await this.nextPosition(userId);
     await this.boardRepository.restore({userId, id});
-    await this.boardRepository.update({id, userId}, {position});
+    await this.boardRepository.update({userId, id}, {position});
     return toBoard(await this.boardRepository.findOneByOrFail({id}))
+  }
+
+  async purgeBoard(userId: number, id: string){
+    const existing = await this.boardRepository.findOne({where:{id, userId}, withDeleted: true});
+    if(!existing) throw new NotFoundException('Board not found!');
+    if(!existing.deletedAt) throw new ConflictException('Board is not in trash!')
+    await this.boardRepository.delete({userId, id})
+  }
+
+  async clearTrash(userId: number){
+    await this.boardRepository.delete({userId, deletedAt: Not(IsNull())}) 
+  }
+
+  async importBoard(userId: number, input: ImportedBoardDto[]){
+    return this.boardRepository.manager.transaction(async (m) =>{
+      const boardRepository = m.getRepository(Board);
+      let position = await this.nextPosition(userId, boardRepository);
+      const idMap: Record<string,string> = {};
+      const created: Board[] = [];
+      for (const b of input){
+        let id: string;
+        do {
+          id = randomUUID();
+        } while (await boardRepository.exists({where: {id}, withDeleted:true}));
+        idMap[b.id] = id;
+
+        created.push(await boardRepository.save(boardRepository.create({
+          id, userId, name: b.name, tasks: b.tasks, columns: b.columns, position: position++,
+          ...(b.createdAt ? { createdAt: new Date(b.createdAt)} : {}) 
+        })));
+      }
+      return { idMap, boards: created.map(toBoard) };  
+    });
   }
 
   private async nextPosition(userId: number, boardRepository: Repository<Board> = this.boardRepository){

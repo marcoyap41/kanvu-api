@@ -6,8 +6,8 @@ export const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const isProd = process.env.NODE_ENV === 'production';
 const base: CookieOptions = {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    secure: true,
+    sameSite:'none',
     path: '/auth',
 };
 

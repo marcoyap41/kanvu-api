@@ -5,6 +5,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { User } from '../users/entities/user.entity.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { OrderDto } from './dto/board-order.dto.js';
+import { ImportBoardsDto } from './dto/import-board.dto.js';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -43,19 +44,19 @@ export class BoardsController {
 
   @HttpCode(204)
   @Delete('boards/:id')
-  async purgeBoard(@Param('id') id:string){
-    return
+  async purgeBoard(@CurrentUser() user: User, @Param('id') id:string){
+    return await this.boardsService.purgeBoard(user.id, id)
   }
 
   @HttpCode(204)
   @Delete('trash')
-  async clearTrash(){
-    return
+  async clearTrash(@CurrentUser() user: User){
+    return await this.boardsService.clearTrash(user.id)
   }
 
   @HttpCode(201)
   @Post('boards/import')
-  async importBoard(){
-    return
+  async importBoard(@CurrentUser() user: User, @Body() importBoardsDto: ImportBoardsDto){
+    return await this.boardsService.importBoard(user.id, importBoardsDto.boards)
   }
 }
