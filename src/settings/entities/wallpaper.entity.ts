@@ -6,14 +6,14 @@ export class Wallpaper{
     @PrimaryColumn()
     userId: number;
 
-    @OneToOne(()=>User, (user)=>user.wallpaper)
+    @OneToOne(()=>User, (user)=>user.wallpaper, {onDelete: 'CASCADE'})
     @JoinColumn({name: 'userId'})
     user: Relation<User>;
 
-    @Column({type: 'bytea', select:false})
+    @Column({type: 'bytea'})
     data: Buffer;
 
-    @Column({type: 'varchar', length:50})
+    @Column({type: 'varchar', length:20})
     mimeType: string;
 
     @UpdateDateColumn({type: 'timestamptz'})

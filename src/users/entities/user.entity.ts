@@ -4,6 +4,21 @@ import { Wallpaper } from "../../settings/entities/wallpaper.entity.js";
 import { OAuthAccount } from "../../auth/entities/oauthaccount.entity.js";
 import { RefreshToken } from "../../auth/entities/refreshtoken.entity.js";
 
+export type UserSettings = Partial<{
+  theme: 'black' | 'grey' | 'white';
+  density: 'comfortable' | 'compact' | 'dense';
+  columnLayout: 3 | 4 | 5;
+  layout: 'columns' | 'lanes';
+  headerBlur: boolean;
+  glassLanes: boolean;
+  glassCards: boolean;
+  glassOpacity: number;
+  headerBlurAmount: number;
+  stageBlurAmount: number;
+  autosave: boolean;
+  wallpaperVersion: string;
+}>;
+
 @Entity('users')
 export class User {
     @PrimaryGeneratedColumn()
@@ -19,7 +34,7 @@ export class User {
     password: string | null;
 
     @Column({type:"jsonb", default: () => "'{}'"})
-    settings: Record<string, unknown>;
+    settings: UserSettings;
 
     @CreateDateColumn({type:'timestamptz'})
     createdAt: Date;
