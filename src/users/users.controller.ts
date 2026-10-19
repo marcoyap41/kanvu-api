@@ -6,28 +6,11 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 type newUser = { name?: string | null; email: string; hashedPassword: string | null };
 
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  //dev db test
-  @Post()
-  async addUserDev(@Body() data: newUser){
-    const newUser = await this.usersService.addUserDev(data)
-    return {
-      message: `Dev \n New user added to db`,
-      newUser
-    }
-  }
-
-  //dev get db test
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  async getUserDev(){
-    return this.usersService.findAll()
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   async findMe(@CurrentUser() user: User){
     return {

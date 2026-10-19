@@ -1,4 +1,4 @@
-import { Injectable, Body, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { UsersService } from '../users/users.service.js';
@@ -9,37 +9,96 @@ import { RefreshToken } from './entities/refreshtoken.entity.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { REFRESH_TTL_MS } from './refresh-cookie.js';
+import { VerificationService } from './verification.service.js';
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
 
 // used when the email doesn't exist, so the response time doesn't reveal which emails are registered
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 @Injectable()
 export class AuthService {
-  constructor(private usersService : UsersService, private jwtService: JwtService, @InjectRepository(RefreshToken) private refreshToken: Repository<RefreshToken>){}
+  constructor(
+    private usersService : UsersService,
+    private jwtService: JwtService,
+    @InjectRepository(RefreshToken) private refreshToken: Repository<RefreshToken>,
+    private verification: VerificationService,
+  ){}
 
-  async register(registerDto: RegisterDto){
-    const name = registerDto.name ?? null;
+  // Step 1 of sign-up: nothing is written to PostgreSQL. The sign-up waits in Redis and a link is emailed.
+  async register(registerDto: RegisterDto, ip: string){
+    const name = registerDto.name?.trim() || null;
+    const email = normalizeEmail(registerDto.email);
 
-    const email = registerDto.email.trim().toLowerCase();
+    if (await this.usersService.findByEmailWithPassword(email)) throw new ConflictException('An account with this email already exists. Sign in instead.');
 
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10)
-    
-    const user = await this.usersService.addUserDev({name, email, hashedPassword})
-    
-    return await this.startSession(user)
+    await this.verification.reserveSend(email, ip); // rate limit BEFORE the expensive bcrypt hash and the email
+    const passwordHash = await bcrypt.hash(registerDto.password, 10);
+    await this.verification.createPending(email, { name, passwordHash }, ip);
+
+    return { status: 'verification_sent', email, expiresInMinutes: this.verification.linkTtlMinutes };
   }
 
-  async login(loginDto: LoginDto){
-    const email = loginDto.email.trim().toLowerCase();
+  // Step 2 of sign-up: the link was clicked. Create the user and sign them in.
+  async verifyEmail(token: string){
+    const { email, name, passwordHash } = await this.verification.consume(token);
 
-    const user = await this.usersService.findByEmailWithPassword(loginDto.email)
-    const ok = await bcrypt.compare(loginDto.password, user?.password ?? DUMMY_HASH)
+    if (await this.usersService.findByEmailWithPassword(email)) {
+      await this.verification.finish(email);
+      throw new ConflictException('This email is already verified. Sign in instead.');
+    }
 
-    if(!user || !ok) throw new UnauthorizedException('Invalid email or password')
+    let user;
+    try {
+      user = await this.usersService.create({ name, email, hashedPassword: passwordHash });
+    } catch (e: any) {
+      if (e?.code === '23505') throw new ConflictException('This email is already verified. Sign in instead.'); // unique violation (race)
+      throw e;
+    }
+    await this.verification.finish(email);
+    return await this.startSession(user);
+  }
 
-    return await this.startSession(user)
+  // "Resend the email" button. Same answer whether or not a sign-up is pending, so it can't be used to probe emails.
+  async resendVerification(rawEmail: string, ip: string){
+    const email = normalizeEmail(rawEmail);
+    await this.verification.resend(email, ip);
+    return { status: 'verification_sent', email, expiresInMinutes: this.verification.linkTtlMinutes };
+  }
+
+  async login(loginDto: LoginDto, ip: string){
+    const email = normalizeEmail(loginDto.email);
+
+    const user = await this.usersService.findByEmailWithPassword(email)
+    if (user) {
+      const ok = await bcrypt.compare(loginDto.password, user.password ?? DUMMY_HASH)
+      if (!ok) throw new UnauthorizedException('Invalid email or password')
+      return await this.startSession(user)
+    }
+
+    // No account yet: maybe a sign-up that was never verified. With the right password, resend the link (rate limited).
+    const pending = await this.verification.getPending(email);
+    const ok = await bcrypt.compare(loginDto.password, pending?.passwordHash ?? DUMMY_HASH);
+    if (!pending || !ok) throw new UnauthorizedException('Invalid email or password')
+
+    let retryAfter: number | undefined;
+    try {
+      await this.verification.resend(email, ip);
+    } catch (e) {
+      if (!(e instanceof HttpException) || e.getStatus() !== HttpStatus.TOO_MANY_REQUESTS) throw e;
+      retryAfter = (e.getResponse() as { retryAfter?: number }).retryAfter;
+    }
+    throw new ForbiddenException({
+      statusCode: HttpStatus.FORBIDDEN,
+      code: 'EMAIL_NOT_VERIFIED',
+      email,
+      retryAfter,
+      message: retryAfter === undefined
+        ? `Your email is not verified yet. We sent a new verification link to ${email}.`
+        : `Your email is not verified yet. Use the link we already sent to ${email}.`,
+    });
   }
 
   async refresh(raw?: string){

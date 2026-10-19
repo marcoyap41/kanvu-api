@@ -9,10 +9,13 @@ import { JwtStrategy } from './jwt.strategy.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RefreshToken } from './entities/refreshtoken.entity.js';
 import { OAuthAccount } from './entities/oauthaccount.entity.js';
+import { MailModule } from '../mail/mail.module.js';
+import { VerificationService } from './verification.service.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([RefreshToken, OAuthAccount]),
     UsersModule, 
+    MailModule,
     PassportModule, 
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -22,6 +25,6 @@ import { OAuthAccount } from './entities/oauthaccount.entity.js';
       })
   })],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, VerificationService],
 })
 export class AuthModule {}

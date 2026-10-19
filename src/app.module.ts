@@ -8,6 +8,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
 import { SettingsModule } from './settings/settings.module.js';
+import { RedisModule } from './redis/redis.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -29,6 +30,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AuthModule,
     UsersModule,
     SettingsModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
