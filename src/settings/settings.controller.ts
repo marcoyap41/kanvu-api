@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Put, UseGuards, Res, StreamableFile, NotFoundException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Put, UseGuards, Res, StreamableFile, NotFoundException, UseInterceptors, UploadedFile, HttpCode } from '@nestjs/common';
 import { SettingsService } from './settings.service.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -42,6 +42,7 @@ export class SettingsController {
   }
 
   @Delete('wallpaper')
+  @HttpCode(204)
   deleteWallpaper(@CurrentUser() user: User){
     return this.settingsService.deleteWallpaper(user.id)
   }
