@@ -6,10 +6,12 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt'
 import { InjectRepository } from '@nestjs/typeorm';
 import { RefreshToken } from './entities/refreshtoken.entity.js';
+import { OAuthAccount } from './entities/oauthaccount.entity.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { REFRESH_TTL_MS } from './refresh-cookie.js';
 import { VerificationService } from './verification.service.js';
+import { OAuthService, type OAuthProfile } from './oauth.service.js';
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
 
@@ -24,7 +26,9 @@ export class AuthService {
     private usersService : UsersService,
     private jwtService: JwtService,
     @InjectRepository(RefreshToken) private refreshToken: Repository<RefreshToken>,
+    @InjectRepository(OAuthAccount) private oauthAccount: Repository<OAuthAccount>,
     private verification: VerificationService,
+    private oauth: OAuthService,
   ){}
 
   // Step 1 of sign-up: nothing is written to PostgreSQL. The sign-up waits in Redis and a link is emailed.
@@ -74,7 +78,7 @@ export class AuthService {
     const user = await this.usersService.findByEmailWithPassword(email)
     if (user) {
       const ok = await bcrypt.compare(loginDto.password, user.password ?? DUMMY_HASH)
-      if (!ok) throw new UnauthorizedException('Invalid email or password')
+      if (!ok || !user.password) throw new UnauthorizedException('Invalid email or password')
       return await this.startSession(user)
     }
 
@@ -99,6 +103,51 @@ export class AuthService {
         ? `Your email is not verified yet. We sent a new verification link to ${email}.`
         : `Your email is not verified yet. Use the link we already sent to ${email}.`,
     });
+  }
+
+  // Finds or creates the user for a verified Google/GitHub OAuth profile, links oauth_accounts, and starts a session + exchange ticket
+  async loginWithOAuth(profile: OAuthProfile) {
+    const email = normalizeEmail(profile.email);
+    const name = profile.name?.trim().slice(0, 50) || null;
+
+    let user: { id: number; email: string; name: string | null } | null = null;
+
+    const existingLink = await this.oauthAccount.findOne({
+      where: { provider: profile.provider, providerUserId: profile.providerUserId },
+    });
+
+    if (existingLink) {
+      user = await this.usersService.findMe(existingLink.userId);
+    }
+
+    if (!user) {
+      const existingUser = await this.usersService.findByEmailWithPassword(email);
+      if (existingUser) {
+        user = existingUser;
+      } else {
+        user = await this.usersService.create({ name, email, hashedPassword: null });
+      }
+      await this.oauthAccount.upsert(
+        {
+          provider: profile.provider,
+          providerUserId: profile.providerUserId,
+          userId: user.id,
+        },
+        ['provider', 'providerUserId'],
+      );
+      await this.verification.finish(email);
+    }
+
+    const session = await this.startSession(user);
+    const ticket = await this.oauth.createExchangeTicket(user.id);
+    return { ...session, ticket };
+  }
+
+  async exchangeOAuthTicket(ticket: string) {
+    const userId = await this.oauth.consumeExchangeTicket(ticket);
+    const user = await this.usersService.findMe(userId);
+    if (!user) throw new UnauthorizedException('User not found.');
+    return await this.startSession(user);
   }
 
   async refresh(raw?: string){

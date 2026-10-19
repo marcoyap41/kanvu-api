@@ -11,6 +11,7 @@ import { RefreshToken } from './entities/refreshtoken.entity.js';
 import { OAuthAccount } from './entities/oauthaccount.entity.js';
 import { MailModule } from '../mail/mail.module.js';
 import { VerificationService } from './verification.service.js';
+import { OAuthService } from './oauth.service.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([RefreshToken, OAuthAccount]),
@@ -25,6 +26,6 @@ import { VerificationService } from './verification.service.js';
       })
   })],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, VerificationService],
+  providers: [AuthService, JwtStrategy, VerificationService, OAuthService],
 })
 export class AuthModule {}
